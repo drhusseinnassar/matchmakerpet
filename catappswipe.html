@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Purrfect Match</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f0f5;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh; 
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; /* Prevents highlighting text while swiping */
+        }
+
+        header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        
+        .logo {
+            color: #fe3c72;
+            font-weight: 800;
+            font-size: 24px;
+            letter-spacing: -1px;
+        }
+
+        .card-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            background-size: cover;
+            background-position: center;
+            position: absolute; /* Changed to absolute for stacking/moving */
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+            /* Transition is handled by JS during swipe, CSS for reset */
+            transform-origin: 50% 100%;
+        }
+
+        .card-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 70%, transparent 100%);
+            padding: 20px;
+            padding-bottom: 30px;
+            color: white;
+            box-sizing: border-box;
+            pointer-events: none; /* Let clicks pass through to the card */
+        }
+
+        .cat-name { font-size: 32px; font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .cat-bio { font-size: 18px; margin-top: 5px; opacity: 0.95; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+        /* Overlay stamps for Like/Nope */
+        .stamp {
+            position: absolute;
+            top: 40px;
+            padding: 5px 10px;
+            border: 4px solid;
+            border-radius: 10px;
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+            opacity: 0;
+            transform: rotate(-15deg);
+            z-index: 10;
+        }
+        .stamp-nope { right: 40px; color: #ec5e6f; border-color: #ec5e6f; transform: rotate(15deg); }
+        .stamp-like { left: 40px; color: #4cd964; border-color: #4cd964; transform: rotate(-15deg); }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding-bottom: 30px;
+            padding-top: 10px;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+
+        .btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            font-size: 32px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.1s;
+            touch-action: manipulation;
+        }
+        
+        .btn:active { transform: scale(0.9); background-color: #f8f8f8; }
+        .btn-no { color: #ec5e6f; border: 2px solid #ec5e6f; }
+        .btn-yes { color: #4cd964; border: 2px solid #4cd964; }
+
+        #match-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        
+        .match-title { 
+            font-family: 'Brush Script MT', cursive; 
+            font-size: 65px; 
+            color: #4cd964; 
+            transform: rotate(-10deg); 
+            text-shadow: 0 5px 10px rgba(0,0,0,0.5);
+        }
+        .match-text { margin-top: 20px; font-size: 20px; text-align: center; padding: 0 20px; }
+        .match-btn { margin-top: 50px; padding: 18px 45px; background: white; color: black; border-radius: 30px; border: none; font-weight: bold; font-size: 18px; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">🔥 Purrfect Match</div>
+    </header>
+
+    <div class="card-container">
+        <div class="card" id="mainCard">
+            <div class="stamp stamp-like" id="likeStamp">LIKE</div>
+            <div class="stamp stamp-nope" id="nopeStamp">NOPE</div>
+            <div class="card-info">
+                <h1 class="cat-name" id="catName">Loading...</h1>
+                <p class="cat-bio" id="catBio">...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-no" onclick="manualSwipe('left')">✖</button>
+        <button class="btn btn-yes" onclick="manualSwipe('right')">♥</button>
+    </div>
+
+    <div id="match-screen">
+        <div class="match-title">It's a Match!</div>
+        <p class="match-text">You and <span id="matchName">Cat</span> have a connection.</p>
+        <button class="match-btn" onclick="closeMatch()">Meow Back</button>
+    </div>
+
+    <script>
+        // --- CAT PROFILES ---
+        const cats = [
+            {
+                name: "Antar, 5",
+                bio: "I know a perfect garbage bin we can hang out at ;)",
+                img: "https://image.pollinations.ai/prompt/a%20gangster%20cat%20wearing%20a%20gold%20chain%20and%20sunglasses"
+            },
+            {
+                name: "Adonis, 4",
+                bio: "February is close, hit me up ;)",
+                img: "https://image.pollinations.ai/prompt/cat%20doing%20workout%20at%20gym,%20muscular%20cat,%20humorous"
+            },
+            {
+                name: "The Philosopher, 7",
+                bio: "If you are into older dudes, you'd better act quick.",
+                img: "https://image.pollinations.ai/prompt/a%20cat%20wearing%20a%20bandana%20in%20a%20thoughtful%20pose"
+            },
+            {
+                name: "Ma2ousheh, 4",
+                bio: "Call me fancy, but I eat Hill's dry food ;)",
+                img: "https://image.pollinations.ai/prompt/a%20fancy%20cat%20wearing%20a%20bowtie,%20sitting%20elegantly"
+            }
+        ];
+
+        let currentIndex = 0;
+        const card = document.getElementById('mainCard');
+        const nameEl = document.getElementById('catName');
+        const bioEl = document.getElementById('catBio');
+        const matchScreen = document.getElementById('match-screen');
+        const matchName = document.getElementById('matchName');
+        const likeStamp = document.getElementById('likeStamp');
+        const nopeStamp = document.getElementById('nopeStamp');
+
+        // --- TOUCH VARIABLES ---
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        const screenWidth = window.innerWidth;
+        const threshold = screenWidth * 0.25; // Swipe 25% of screen to trigger
+
+        // Initial Load
+        updateCard();
+
+        // --- TOUCH EVENTS ---
+        card.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            card.style.transition = 'none'; // Remove transition for instant follow
+        });
+
+        card.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // Prevent scrolling while dragging
+            
+            currentX = e.touches[0].clientX;
+            let deltaX = currentX - startX;
+            let rotate = deltaX * 0.05; // Slight rotation
+
+            // Move the card
+            card.style.transform = `translateX(${deltaX}px) rotate(${rotate}deg)`;
+
+            // Show Stamps (Opacity based on distance)
+            if (deltaX > 0) {
+                likeStamp.style.opacity = Math.min(deltaX / 100, 1);
+                nopeStamp.style.opacity = 0;
+            } else {
+                nopeStamp.style.opacity = Math.min(Math.abs(deltaX) / 100, 1);
+                likeStamp.style.opacity = 0;
+            }
+        });
+
+        card.addEventListener('touchend', (e) => {
+            isDragging = false;
+            let deltaX = currentX - startX;
+
+            if (deltaX > threshold) {
+                finishSwipe('right');
+            } else if (deltaX < -threshold) {
+                finishSwipe('left');
+            } else {
+                resetCard(); // Snap back if didn't swipe far enough
+            }
+        });
+
+        // --- FUNCTIONS ---
+
+        function updateCard() {
+            // Reset positions
+            card.style.transition = 'none';
+            card.style.transform = 'translateX(0) rotate(0)';
+            likeStamp.style.opacity = 0;
+            nopeStamp.style.opacity = 0;
+
+            // Update Content
+            const cat = cats[currentIndex];
+            card.style.backgroundImage = `url('${cat.img}')`;
+            nameEl.innerText = cat.name;
+            bioEl.innerText = cat.bio;
+        }
+
+        function resetCard() {
+            card.style.transition = 'transform 0.3s ease-out';
+            card.style.transform = 'translateX(0) rotate(0)';
+            likeStamp.style.opacity = 0;
+            nopeStamp.style.opacity = 0;
+        }
+
+        function finishSwipe(direction) {
+            card.style.transition = 'transform 0.4s ease-in';
+            
+            // Fly off screen
+            let endX = direction === 'right' ? screenWidth + 100 : -screenWidth - 100;
+            card.style.transform = `translateX(${endX}px) rotate(${direction === 'right' ? 20 : -20}deg)`;
+
+            setTimeout(() => {
+                if (direction === 'right') {
+                    triggerMatch();
+                } else {
+                    nextCat();
+                }
+            }, 300);
+        }
+
+        function manualSwipe(direction) {
+            finishSwipe(direction);
+        }
+
+        function nextCat() {
+            currentIndex = (currentIndex + 1) % cats.length;
+            // Wait a split second for the fly-off animation to finish visually before resetting
+            setTimeout(() => {
+                updateCard();
+            }, 50);
+        }
+
+        function triggerMatch() {
+            matchName.innerText = cats[currentIndex].name.split(",")[0];
+            matchScreen.style.display = 'flex';
+        }
+
+        function closeMatch() {
+            matchScreen.style.display = 'none';
+            nextCat();
+        }
+    </script>
+</body>
+</html>
